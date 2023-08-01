@@ -83,9 +83,9 @@ jobs:
           DIGEST: ${{ steps.build-and-push.outputs.digest }}
         run: cosign sign --yes ${{ env.DOCKER_REPO }}@${DIGEST}
 
-      - name : Report
+      - name : Cosign verification for each pushed tag
         if: github.event_name != 'pull_request' && github.event_name != 'pull_request_target'
         env:
-          DIGEST: ${{ steps.build-and-push.outputs.digest}}
+          TAGS: ${{ steps.meta.outputs.tags }}
           WORKFLOW_REF: ${{ github.workflow_ref }}
-        run: cosign verify ${{ env.DOCKER_REPO }}@${DIGEST} --certificate-identity=https://github.com/${WORKFLOW_REF} --certificate-oidc-issuer=https://token.actions.githubusercontent.com | jq .
+        run: cosign verify ${TAGS} --certificate-identity=https://github.com/${WORKFLOW_REF} --certificate-oidc-issuer=https://token.actions.githubusercontent.com | jq .
