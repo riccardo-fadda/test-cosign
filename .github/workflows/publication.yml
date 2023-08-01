@@ -81,5 +81,4 @@ jobs:
         if: github.event_name != 'pull_request' && github.event_name != 'pull_request_target'
         env:
           DIGEST: ${{ steps.build-and-push.outputs.digest }}
-          COSIGN_EXPERIMENTAL: "true"
         run: cosign sign --yes ${{ env.REPO }}@${DIGEST}
