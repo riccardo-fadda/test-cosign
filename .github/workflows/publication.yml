@@ -25,7 +25,7 @@ jobs:
       packages: write
       id-token: write
     env:
-      REPO: riccardofadda/test-cosign
+      DOCKER_REPO: riccardofadda/test-cosign
     steps:
       - name: Checkout
         uses: actions/checkout@v3
@@ -39,7 +39,7 @@ jobs:
         uses: docker/metadata-action@v4
         with:
           images: |
-            ${{ env.REPO }}
+            ${{ env.DOCKER_REPO }}
           tags: |
             type=schedule
             type=ref,event=branch
@@ -81,4 +81,14 @@ jobs:
         if: github.event_name != 'pull_request' && github.event_name != 'pull_request_target'
         env:
           DIGEST: ${{ steps.build-and-push.outputs.digest }}
-        run: cosign sign --yes ${{ env.REPO }}@${DIGEST}
+        run: cosign sign --yes ${{ env.DOCKER_REPO }}@${DIGEST}
+
+      - name : Report
+        if: github.event_name != 'pull_request' && github.event_name != 'pull_request_target'
+        env:
+          DIGEST: ${{ steps.build-and-push.outputs.digest}}
+          REF: ${{ github.ref }}
+          WORKFLOW_REF: ${{ github.workflow_ref }}
+        run: |
+          WORKFLOW_REF_CLEANED=$(echo "${WORKFLOW_REF}" | cut -d '@' -f 1); \
+          cosign verify ${{ env.DOCKER_REPO }}@${DIGEST} --certificate-identity=https://github.com/${WORKFLOW_REF_CLEANED}@${REF} --certificate-oidc-issuer=https://token.actions.githubusercontent.com | jq .
