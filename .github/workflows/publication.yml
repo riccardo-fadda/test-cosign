@@ -1,0 +1,85 @@
+name: "Test cosign"
+
+on:
+  pull_request_target:
+    types:
+      - opened
+      - synchronized
+      - edited
+      - labeled
+      - unlabeled
+    branches:
+      - main
+      - release/*
+  push:
+    branches:
+      - main
+      - release/*
+
+jobs:
+  build-and-push:
+    name: Build and Push
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+    env:
+      REPO: riccardofadda/test-cosign
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Install Cosign
+        if: github.event_name != 'pull_request' && github.event_name != 'pull_request_target'
+        uses: sigstore/cosign-installer@v3.1.1
+
+      - name: Docker meta
+        id: meta
+        uses: docker/metadata-action@v4
+        with:
+          images: |
+            ${REPO}
+          tags: |
+            type=schedule
+            type=ref,event=branch
+            type=ref,event=pr,value={{base_ref}}
+            type=ref,event=tag
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}}
+            type=sha
+            type=raw,event=pr,value={{base_ref}}
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v2
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+        with:
+          platforms: linux/amd64,linux/arm64
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          username: riccardofadda
+          password: provalogindocker
+
+      - name: Build and push Docker image
+        if: github.event_name != 'pull_request' && github.event_name != 'pull_request_target'
+        id: build-and-push
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          file: Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          platforms: linux/amd64,linux/arm64
+          
+      - name: Sign the image
+        if: github.event_name != 'pull_request' && github.event_name != 'pull_request_target'
+        env:
+          DIGEST: ${{ steps.build-and-push.outputs.digest }}
+          COSIGN_EXPERIMENTAL: "true"
+        run: cosign sign --yes ${REPO}@${DIGEST}
