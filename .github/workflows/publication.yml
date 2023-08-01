@@ -39,7 +39,7 @@ jobs:
         uses: docker/metadata-action@v4
         with:
           images: |
-            ${REPO}
+            ${{ env.REPO }}
           tags: |
             type=schedule
             type=ref,event=branch
@@ -82,4 +82,4 @@ jobs:
         env:
           DIGEST: ${{ steps.build-and-push.outputs.digest }}
           COSIGN_EXPERIMENTAL: "true"
-        run: cosign sign --yes ${REPO}@${DIGEST}
+        run: cosign sign --yes ${{ env.REPO }}@${DIGEST}
