@@ -83,10 +83,22 @@ jobs:
           DIGEST: ${{ steps.build-and-push.outputs.digest }}
         run: cosign sign --yes ${{ env.DOCKER_REPO }}@${DIGEST}
 
-      - name : Cosign verification for each pushed tag
-        if: github.event_name != 'pull_request' && github.event_name != 'pull_request_target'
+  cosign-verification:
+    name: Cosign Verification
+    runs-on: ubuntu-latest
+    env:
+      TAGS: ${{ needs.build-and-push.outputs.tags }}
+      WORKFLOW_REF: ${{ github.workflow_ref }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Install Cosign
+        uses: sigstore/cosign-installer@v3.1.1
+
+      - name: Cosign verification for each pushed tag
         env:
-          TAGS: ${{ steps.meta.outputs.tags }}
+          TAGS: ${{ needs.build-and-push.outputs.tags }}
           WORKFLOW_REF: ${{ github.workflow_ref }}
         run: |
           for tag in $TAGS; do
